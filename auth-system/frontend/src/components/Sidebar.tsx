@@ -5,7 +5,9 @@ import {
   Shield, 
   Server, 
   LogOut,
-  User
+  User,
+  BarChart3,
+  ExternalLink
 } from 'lucide-react'
 import { useAuthStore } from '../services/auth'
 
@@ -38,10 +40,78 @@ const Sidebar = () => {
       icon: Server,
       current: location.pathname === '/microservices',
     },
+    // NUEVA ENTRADA - Excel Dashboard
+    {
+      name: 'Excel Dashboard',
+      href: '/excel2db/Dashboard',
+      icon: BarChart3,
+      current: false, // Siempre false porque es externo
+      isExternal: true,
+      description: 'Análisis de archivos Excel',
+      requiresRole: ['admin', 'analyst', 'user']
+    },
   ]
+
+  // Verificar si el usuario tiene acceso a Excel2db
+  const hasExcelAccess = user?.roles?.some((role: any) => 
+    ['admin', 'analyst', 'user'].includes(typeof role === 'string' ? role : role.name)
+  )
+
+  // Filtrar navegación según roles del usuario
+  const filteredNavigation = navigation.filter(item => {
+    if (!item.requiresRole) return true
+    if (!user?.roles) return false
+    
+    return user.roles.some((role: any) => {
+      const roleName = typeof role === 'string' ? role : role.name
+      return item.requiresRole!.includes(roleName)
+    })
+  })
 
   const handleLogout = () => {
     logout()
+  }
+
+  const NavigationItem = ({ item }: { item: typeof navigation[0] }) => {
+    const Icon = item.icon
+
+    // Para enlaces externos (Excel2db)
+    if (item.isExternal) {
+      return (
+        <a
+          key={item.name}
+          href={`http://localhost${item.href}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          title={item.description}
+        >
+          <Icon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
+          {item.name}
+          <ExternalLink className="ml-auto h-4 w-4 opacity-50" />
+        </a>
+      )
+    }
+
+    // Para enlaces internos normales
+    return (
+      <Link
+        key={item.name}
+        to={item.href}
+        className={`group flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+          item.current
+            ? 'bg-primary-100 text-primary-700 border-r-2 border-primary-700'
+            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+        }`}
+      >
+        <Icon
+          className={`mr-3 h-5 w-5 ${
+            item.current ? 'text-primary-700' : 'text-gray-400 group-hover:text-gray-500'
+          }`}
+        />
+        {item.name}
+      </Link>
+    )
   }
 
   return (
@@ -53,27 +123,9 @@ const Sidebar = () => {
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-2">
-        {navigation.map((item) => {
-          const Icon = item.icon
-          return (
-            <Link
-              key={item.name}
-              to={item.href}
-              className={`group flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                item.current
-                  ? 'bg-primary-100 text-primary-700 border-r-2 border-primary-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
-              <Icon
-                className={`mr-3 h-5 w-5 ${
-                  item.current ? 'text-primary-700' : 'text-gray-400 group-hover:text-gray-500'
-                }`}
-              />
-              {item.name}
-            </Link>
-          )
-        })}
+        {filteredNavigation.map((item) => (
+          <NavigationItem key={item.name} item={item} />
+        ))}
       </nav>
 
       {/* User info y logout */}
@@ -91,6 +143,12 @@ const Sidebar = () => {
             </p>
             <p className="text-xs text-gray-500 truncate">
               {user?.username}
+            </p>
+            {/* Mostrar roles del usuario */}
+            <p className="text-xs text-gray-400 truncate">
+              {user?.roles?.map((role: any) => 
+                typeof role === 'string' ? role : role.name
+              ).join(', ')}
             </p>
           </div>
         </div>

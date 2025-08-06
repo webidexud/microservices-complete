@@ -1,81 +1,164 @@
+# docker-compose.yml - REEMPLAZAR COMPLETAMENTE
 services:
-  si_nginx:
-    container_name: si_nginx
-    build:
-      context: ./nginx
+  # ===== AUTH-SYSTEM SERVICES =====
+  auth_postgres:
+    image: postgres:15-alpine
+    container_name: auth_postgres_db
+    environment:
+      POSTGRES_DB: auth_system
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d auth_system"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - auth_network
+
+  auth_backend:
+    build: 
+      context: ./auth-system/backend
       dockerfile: Dockerfile
+    container_name: auth_backend
+    environment:
+      DATABASE_URL: postgresql://admin:password123@auth_postgres:5432/auth_system
+      JWT_SECRET: change-this-super-secret-key-in-production
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      NODE_ENV: development
+      LOG_LEVEL: info
+      PORT: 3000
+      DEFAULT_ADMIN_USERNAME: admin
+      DEFAULT_ADMIN_PASSWORD: admin123
+      DEFAULT_ADMIN_EMAIL: admin@sistema.com
+      DEFAULT_ADMIN_FIRST_NAME: Administrador
+      DEFAULT_ADMIN_LAST_NAME: Sistema
+    ports:
+      - "3000:3000"
+    depends_on:
+      auth_postgres:
+        condition: service_healthy
+    volumes:
+      - ./auth-system/backend:/app
+      - backend_node_modules:/app/node_modules
+    networks:
+      - auth_network
+
+  auth_frontend:
+    build:
+      context: ./auth-system/frontend
+      dockerfile: Dockerfile
+    container_name: auth_frontend
+    environment:
+      VITE_API_URL: http://localhost/api
+      VITE_APP_NAME: Auth System
+    ports:
+      - "3001:3000"
+    depends_on:
+      - auth_backend
+    volumes:
+      - ./auth-system/frontend:/app
+      - frontend_node_modules:/app/node_modules
+    networks:
+      - auth_network
+
+  auth_nginx:
+    build:
+      context: ./auth-system/nginx
+      dockerfile: Dockerfile
+    container_name: auth_proxy
     ports:
       - "80:80"
       - "443:443"
+    depends_on:
+      - auth_backend
+      - auth_frontend
     volumes:
-      - ${path_host_vol_nginx}:${path_cont_vol_nginx}
-    networks:
-      - auth_network
-  si_ofex:
-    container_name: si_ofex
-    build:
-      context: ./si_ofex
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=${NODE_ENV}
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - DB_PORT=${DB_PORT}
-      - PORT=3000
-    volumes:
-      - ${path_host_vol_si_ofex}:${path_cont_vol_si_ofex}
+      - ./auth-system/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
       - auth_network
 
-  si_db_general:
-    container_name: si_db_general
-    image: postgres:latest
-    environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_NAME}
-      - POSTGRES_HOST=${DB_HOST}
-      - POSTGRES_PORT=${DB_PORT}
-    volumes:
-      # - ${path_host_vol_db}:${path_cont_vol_db}
-      - ./si_db_general/data:/var/lib/postgresql/data
-      - ./si_db_general/init-db:/docker-entrypoint-initdb.d
-    networks:
-      - auth_network
-
-  adminer:
-    container_name: adminer
-    image: adminer:latest
-    restart: always
-    ports:
-      - 5001:8080
-    networks:
-      - auth_network
-
+  # ===== EXCEL2DB SERVICE =====
   bot_excel:
     container_name: "bot_excel"
     build:
       context: ./Excel2db
       dockerfile: Dockerfile
-    ports:
-      - "${PORT_BOT}:61800"
+    # PUERTO CERRADO - Solo acceso interno
+    expose:
+      - "61800"
     environment:
       - SHARED_LINK=${SHARED_LINK}
       - SHEET_NAME=${SHEET_NAME}
       - DIR_AND_NAME_XLSX=${DIR_AND_NAME_XLSX}
-      - PORT=${PORT_BOT}
+      - PORT=61800
       - BOKEH_ALLOW_WS_ORIGIN=${BOKEH_ALLOW_WS_ORIGIN}
     volumes:
-      # - ./Excel2db/main.py:/app/main.py
       - ./Excel2db/src:/app/src
     networks:
       - auth_network
+    depends_on:
+      - auth_nginx
 
+  # ===== OTROS SERVICIOS EXISTENTES =====
+  # Comentar si no existen estas carpetas
+  # si_ofex:
+  #   container_name: si_ofex
+  #   build:
+  #     context: ./si_ofex
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - NODE_ENV=${NODE_ENV}
+  #     - DB_HOST=${DB_HOST}
+  #     - DB_USER=${DB_USER}
+  #     - DB_PASSWORD=${DB_PASSWORD}
+  #     - DB_NAME=${DB_NAME}
+  #     - DB_PORT=${DB_PORT}
+  #     - PORT=3000
+  #   volumes:
+  #     - ${path_host_vol_si_ofex}:${path_cont_vol_si_ofex}
+  #   networks:
+  #     - auth_network
+
+  # si_db_general:
+  #   container_name: si_db_general
+  #   image: postgres:latest
+  #   environment:
+  #     - POSTGRES_USER=${DB_USER}
+  #     - POSTGRES_PASSWORD=${DB_PASSWORD}
+  #     - POSTGRES_DB=${DB_NAME}
+  #     - POSTGRES_HOST=${DB_HOST}
+  #     - POSTGRES_PORT=${DB_PORT}
+  #   volumes:
+  #     - ./si_db_general/data:/var/lib/postgresql/data
+  #     - ./si_db_general/init-db:/docker-entrypoint-initdb.d
+  #   networks:
+  #     - auth_network
+
+  # adminer:
+  #   container_name: adminer
+  #   image: adminer:latest
+  #   restart: always
+  #   ports:
+  #     - 5001:8080
+  #   networks:
+  #     - auth_network
 
 networks:
   auth_network:
     driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  backend_node_modules:
+    driver: local
+  frontend_node_modules:
+    driver: local
