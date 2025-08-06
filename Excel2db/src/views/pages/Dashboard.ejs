@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= title %>
+    </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        teal: '#5ea9a7',
+                        dark: '#23322d',
+                        gold: '#d6b770'
+                    },
+                    backgroundImage: {
+                        'gradient-dashboard': 'linear-gradient(to bottom, rgba(94,169,167,0.1) 0%, rgba(35,50,45,0.2) 100%)',
+                    }
+                }
+            }
+        }
+    </script>
+
+
+    <script src="/public/scripts/utils.js"></script>
+
+</head>
+
+<body class="bg-gradient-dashboard bg-fixed min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-dark mb-2">Dashboard de Proyectos</h1>
+            <div class="w-20 h-1 bg-gold rounded-full"></div>
+        </header>
+
+        <!-- Filtros -->
+        <div class="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-teal/20 p-6 mb-8">
+            <h2 class="text-xl font-semibold text-dark mb-4 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-teal" viewBox="0 0 20 20"
+                    fill="currentColor">
+                    <path fill-rule="evenodd"
+                        d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z"
+                        clip-rule="evenodd" />
+                </svg>
+                Filtros
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-dark mb-1">Año</label>
+                    <select id="filtroAnio"
+                        class="w-full p-2 border border-teal/30 rounded-lg focus:ring-gold focus:border-gold bg-white/50">
+                        <option value="">Todos los años</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-dark mb-1">Entidad</label>
+                    <select id="filtroEntidad"
+                        class="w-full p-2 border border-teal/30 rounded-lg focus:ring-gold focus:border-gold bg-white/50">
+                        <option value="">Todas las entidades</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-dark mb-1">Estado</label>
+                    <select id="filtroEstado"
+                        class="w-full p-2 border border-teal/30 rounded-lg focus:ring-gold focus:border-gold bg-white/50">
+                        <option value="">Todos los estados</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-dark mb-1">Relevancia</label>
+                    <select id="filtroRiesgo"
+                        class="w-full p-2 border border-teal/30 rounded-lg focus:ring-gold focus:border-gold bg-white/50">
+                        <option value="">Todas las relevancias</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button id="aplicarFiltros"
+                        class="w-full bg-teal hover:bg-dark text-white font-medium py-2 px-4 rounded-lg transition-all hover:shadow-lg flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 20 20"
+                            fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        Aplicar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resumen de Totales -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8" id="totalesContainer">
+            <!-- Los totales se actualizarán dinámicamente aquí -->
+        </div>
+
+        <!-- Gráficos -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Gráfico de Entidades -->
+            <div class="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-teal/20 p-6">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+                    <h2 class="text-xl font-semibold text-dark flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-teal" viewBox="0 0 20 20"
+                            fill="currentColor">
+                            <path
+                                d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                        </svg>
+                        Gráfico por Entidad
+                    </h2>
+                    <div class="flex gap-2">
+                        <select id="tipoGraficoEntidades"
+                            class="bg-white/50 border border-teal/30 rounded-lg px-3 py-1 text-sm focus:ring-gold focus:border-gold">
+                            <option value="bar">Barras</option>
+                            <option value="pie">Pastel</option>
+                            <option value="doughnut">Dona</option>
+                        </select>
+                        <select id="metricaEntidades"
+                            class="bg-white/50 border border-teal/30 rounded-lg px-3 py-1 text-sm focus:ring-gold focus:border-gold">
+                            <option value="cantidad">Cantidad de contratos</option>
+                            <option value="estados">Distribución por estados</option>
+                            <option value="valor">Valor total</option>
+                            <option value="Relevancia">Relevancia</option>
+                        </select>
+                    </div>
+                </div>
+                <canvas id="graficoEntidades" height="300"></canvas>
+            </div>
+
+            <!-- Gráfico Anual -->
+            <div class="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-teal/20 p-6">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+                    <h2 class="text-xl font-semibold text-dark flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-teal" viewBox="0 0 20 20"
+                            fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        Evolución Temporal
+                    </h2>
+                    <div class="flex gap-2">
+                        <select id="tipoGraficoAnual"
+                            class="bg-white/50 border border-teal/30 rounded-lg px-3 py-1 text-sm focus:ring-gold focus:border-gold">
+                            <option value="line">Líneas</option>
+                            <option value="bar">Barras</option>
+                        </select>
+                        <select id="metricaAnual"
+                            class="bg-white/50 border border-teal/30 rounded-lg px-3 py-1 text-sm focus:ring-gold focus:border-gold">
+                            <option value="valor">Valor total</option>
+                            <option value="beneficio">Beneficio</option>
+                            <option value="contratos">Cantidad de contratos</option>
+                        </select>
+                    </div>
+                </div>
+                <canvas id="graficoAnual" height="300"></canvas>
+            </div>
+        </div>
+        <!-- Tabla de Detalles -->
+        <div class="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-teal/20 overflow-hidden mb-8">
+            <div class="bg-dark px-6 py-4 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gold flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20"
+                        fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M5 4a1 1 0 00-1 1v14a1 1 0 001 1h10a1 1 0 001-1V5a1 1 0 00-1-1H5zm2 6a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1zm1 3a1 1 0 100 2h4a1 1 0 100-2H8z"
+                            clip-rule="evenodd" />
+                    </svg>
+                    Detalle de Proyectos
+                </h2>
+                <div class="text-sm text-gold font-semibold" id="contadorProyectos">
+                    Mostrando 0 proyectos
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-teal/20" id="tablaProyectos">
+                    <thead class="bg-teal/10">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-dark uppercase tracking-wider">Año
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-dark uppercase tracking-wider">
+                                Entidad</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-dark uppercase tracking-wider">
+                                Relevancia</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-dark uppercase tracking-wider">
+                                Estado</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-dark uppercase tracking-wider">Valor
+                                Total</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-dark uppercase tracking-wider">
+                                Beneficio</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-teal/20" id="cuerpoTabla">
+                        <!-- Los datos se cargarán dinámicamente aquí -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Parsear los datos del backend
+        const datosBackend = JSON.parse('<%- datos %>');
+        const proyectos = datosBackend.proyectos;
+        const entidades = datosBackend.entidades;
+        const años = datosBackend.años;
+
+        // Obtener todos los estados únicos de los proyectos
+        const estadosUnicos = [...new Set(proyectos.map(p => p.estado).filter(Boolean))].sort();
+        const riesgosUnicos = [...new Set(proyectos.map(p => p.relevancia).filter(Boolean))].sort((a, b) => a - b);
+
+        // Inicializar selectores de filtro
+        inicializarFiltros(["filtroAnio", "filtroEntidad", "filtroEstado","filtroRiesgo"], [años, entidades, estadosUnicos,riesgosUnicos])
+
+        // Función para calcular totales filtrados
+        function calcularTotalesFiltrados(proyectosFiltrados) {
+            return proyectosFiltrados.reduce((acc, item) => {
+                return {
+                    aporteEntidad: acc.aporteEntidad + (item.aporteEntidad || 0),
+                    adicionAporte: acc.adicionAporte + (item.adicionAporte || 0),
+                    contrapartida: acc.contrapartida + (item.contrapartida || 0),
+                    adicionContrapartida: acc.adicionContrapartida + (item.adicionContrapartida || 0),
+                    valorTotal: acc.valorTotal + (item.valorTotal || 0),
+                    beneficio: acc.beneficio + (item.beneficio || 0)
+                };
+            }, {
+                aporteEntidad: 0,
+                adicionAporte: 0,
+                contrapartida: 0,
+                adicionContrapartida: 0,
+                valorTotal: 0,
+                beneficio: 0
+            });
+        }
+
+        // Función para actualizar los totales en el UI
+        function actualizarTotales(totales) {
+            const totalesContainer = document.getElementById('totalesContainer');
+            totalesContainer.innerHTML = `
+            <div class="bg-white rounded-lg shadow-md shadow-[#35251f] p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[#35251f] text-sm font-medium">APORTE ENTIDAD</p>
+                        <p class="text-2xl font-bold text-[#35251f]">${formatCurrency(totales.aporteEntidad)}</p>
+                    </div>
+                    <div class="bg-blue-100 p-3 rounded-full">
+                        <i class="fas fa-building text-blue-500"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md shadow-[#35251f] p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[#35251f] text-sm font-medium">ADICIÓN APORTE 2025</p>
+                        <p class="text-2xl font-bold text-[#35251f]">${formatCurrency(totales.adicionAporte)}</p>
+                    </div>
+                    <div class="bg-green-100 p-3 rounded-full">
+                        <i class="fas fa-plus-circle text-green-500"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md shadow-[#35251f] p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[#35251f] text-sm font-medium">CONTRAPARTIDA</p>
+                        <p class="text-2xl font-bold text-[#35251f]">${formatCurrency(totales.contrapartida)}</p>
+                    </div>
+                    <div class="bg-purple-100 p-3 rounded-full">
+                        <i class="fas fa-handshake text-purple-500"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md shadow-[#35251f] p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[#35251f] text-sm font-medium">ADICIÓN CONTRAP. 2025</p>
+                        <p class="text-2xl font-bold text-[#35251f]">${formatCurrency(totales.adicionContrapartida)}</p>
+                    </div>
+                    <div class="bg-yellow-100 p-3 rounded-full">
+                        <i class="fas fa-plus text-yellow-500"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md shadow-[#35251f] p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[#35251f] text-sm font-medium">VALOR TOTAL</p>
+                        <p class="text-2xl font-bold text-[#35251f]">${formatCurrency(totales.valorTotal)}</p>
+                    </div>
+                    <div class="bg-red-100 p-3 rounded-full">
+                        <i class="fas fa-chart-line text-red-500"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md shadow-[#35251f] p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[#35251f] text-sm font-medium">BENEFICIO INST.</p>
+                        <p class="text-2xl font-bold text-[#35251f]">${formatCurrency(totales.beneficio)}</p>
+                    </div>
+                    <div class="bg-indigo-100 p-3 rounded-full">
+                        <i class="fas fa-coins text-indigo-500"></i>
+                    </div>
+                </div>
+            </div>
+        `;
+        }
+
+        // Función para aplicar filtros
+        function aplicarFiltros() {
+            const anioSeleccionado = document.getElementById('filtroAnio').value;
+            const entidadSeleccionada = document.getElementById('filtroEntidad').value;
+            const estadoSeleccionado = document.getElementById('filtroEstado').value;
+            const riesgoSeleccionado = document.getElementById('filtroRiesgo').value;
+
+            // Filtrar proyectos
+            const proyectosFiltrados = proyectos.filter(proyecto => {
+                const cumpleAnio = !anioSeleccionado || proyecto.anio == anioSeleccionado;
+                const cumpleEntidad = !entidadSeleccionada || proyecto.entidad == entidadSeleccionada;
+                const cumpleEstado = !estadoSeleccionado || proyecto.estado == estadoSeleccionado;
+                const cumpleRiesgo = !riesgoSeleccionado || proyecto.relevancia == riesgoSeleccionado;
+                return cumpleAnio && cumpleEntidad && cumpleEstado && cumpleRiesgo;
+            });
+
+            // Actualizar contador
+            document.getElementById('contadorProyectos').textContent = `Mostrando ${proyectosFiltrados.length} proyectos`;
+
+            // Actualizar tabla
+            const cuerpoTabla = document.getElementById('cuerpoTabla');
+            cuerpoTabla.innerHTML = proyectosFiltrados.map(proyecto => {
+                // Determinar clase CSS según el estado
+                let estadoClass = 'bg-gray-100 text-gray-800'; // Por defecto
+                const estadoTexto = proyecto.estado || 'N/A';
+
+                if (estadoTexto === 'FINALIZADO') {
+                    estadoClass = 'bg-green-100 text-green-800';
+                } else if (estadoTexto === 'SUSPENDIDO') {
+                    estadoClass = 'bg-red-100 text-red-800';
+                } else if (estadoTexto === 'EN EJECUCIÓN') {
+                    estadoClass = 'bg-yellow-100 text-yellow-800';
+                } else if (estadoTexto === 'SUSCRITO') {
+                    estadoClass = 'bg-blue-100 text-blue-800';
+                } else if (estadoTexto === 'LIQUIDADO') {
+                    estadoClass = 'bg-purple-100 text-purple-800';
+                }
+
+                let estadoRiesgo = "hover:bg-gray-50 odd:bg-[#15beaf0d] odd:dark:bg-[#15beaf0d]";
+                const estadoRiesgoTexto = proyecto.relevancia || 'N/A';
+
+                switch (estadoRiesgoTexto) {
+                    case 1:
+                        estadoRiesgo = "bg-teal/20";
+                        break;
+                    case 2:
+                        estadoRiesgo = "bg-[#5ea9a7]/60";
+                        break;
+                    case 3:
+                        estadoRiesgo = "bg-[#5ea9a7]/60";
+                        break;
+                    case 4:
+                        estadoRiesgo = "bg-[#d6b770]/40";
+                        break;
+                    case 5:
+                        estadoRiesgo = "bg-[#d6b770]";
+                        break;
+                    case 6:
+                        estadoRiesgo = "bg-[#c0a05a]";
+                        break;
+                    case 7:
+                        estadoRiesgo = "bg-[#aa8a44]";
+                        break;
+                    case 8:
+                        estadoRiesgo = "bg-[#23322d]/80 text-white";
+                        break;
+                    case 9:
+                        estadoRiesgo = "bg-[#23322d]/90";
+                        break;
+                    case 10:
+                        estadoRiesgo = "bg-[#6e1a1a]/95 text-white";
+                        break;
+                    default:
+                        estadoRiesgo = "hover:bg-gray-50 odd:bg-[#15beaf0d] odd:dark:bg-[#15beaf0d]";
+                }
+
+                
+                // Puedes agregar más condiciones según tus necesidades
+
+                return `
+        <tr class="${estadoRiesgo}">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-#35251f">${proyecto.anio || 'N/A'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-#35251f">${proyecto.entidad || 'N/A'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-#35251f">${proyecto.relevancia || 'N/A'}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${estadoClass}">
+                        ${estadoTexto}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-#35251f">${formatCurrency(proyecto.valorTotal)}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-#35251f">${formatCurrency(proyecto.beneficio)}</td>
+            </tr>
+            `;
+            }).join('');
+
+            // Calcular y actualizar totales
+            const totalesFiltrados = calcularTotalesFiltrados(proyectosFiltrados);
+            actualizarTotales(totalesFiltrados);
+
+            // Actualizar gráficos
+            actualizarGraficos(proyectosFiltrados);
+        }
+
+        // Inicializar gráficos
+        // Variables globales para los gráficos
+        let graficoEntidades, graficoAnual;
+
+
+
+
+        function procesarMetricas(proyectosFiltrados, tipoMetrica, agrupador) {
+            switch (tipoMetrica) {
+                case 'cantidad':
+                    return proyectosFiltrados.reduce((acc, proyecto) => {
+                        const key = proyecto[agrupador];
+                        if (!key) return acc;
+                        acc[key] = (acc[key] || 0) + 1;
+                        return acc;
+                    }, {});
+
+                case 'estados':
+                    return proyectosFiltrados.reduce((acc, proyecto) => {
+                        const key = proyecto.estado || 'Sin estado';
+                        if (!proyecto[agrupador]) return acc;
+                        acc[key] = (acc[key] || 0) + 1;
+                        return acc;
+                    }, {});
+
+                case 'valor':
+                    return proyectosFiltrados.reduce((acc, proyecto) => {
+                        const key = proyecto[agrupador];
+                        if (!key) return acc;
+                        acc[key] = (acc[key] || 0) + (proyecto.valorTotal || 0);
+                        return acc;
+                    }, {});
+
+                case 'beneficio':
+                    return proyectosFiltrados.reduce((acc, proyecto) => {
+                        const key = proyecto[agrupador];
+                        if (!key) return acc;
+                        acc[key] = (acc[key] || 0) + (proyecto.beneficio || 0);
+                        return acc;
+                    }, {});
+
+                case 'contratos':
+                    return proyectosFiltrados.reduce((acc, proyecto) => {
+                        const key = proyecto[agrupador];
+                        if (!key) return acc;
+                        acc[key] = (acc[key] || 0) + 1;
+                        return acc;
+                    }, {});
+
+                default:
+                    return {};
+            }
+        }
+
+
+
+
+
+
+        function getTituloMetrica(metrica) {
+            const titulos = {
+                'cantidad': 'Cantidad de contratos',
+                'estados': 'Distribución por estados',
+                'valor': 'Valor total',
+                'beneficio': 'Beneficio total',
+                'contratos': 'Cantidad de contratos'
+            };
+            return titulos[metrica] || 'Datos';
+        }
+
+
+        // Función mejorada para crear gráficos
+        function crearGrafico(ctx, tipo, labels, data, titulo, metrica) {
+            const esMonetario = ['valor', 'beneficio'].includes(metrica);
+            const colores = generarColores(labels.length);
+
+            return new Chart(ctx, {
+                type: tipo,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: titulo,
+                        data: data,
+                        backgroundColor: tipo === 'bar' ? 'rgba(94, 169, 167, 0.7)' : colores.background,
+                        borderColor: tipo === 'bar' ? 'rgba(35, 50, 45, 1)' : colores.border,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: tipo === 'pie' || tipo === 'doughnut' ? 'right' : 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const valor = context.raw;
+                                    return esMonetario ?
+                                        `${context.label}: ${formatCurrency(valor)}` :
+                                        `${context.label}: ${valor}`;
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: titulo
+                        }
+                    },
+                    scales: (tipo === 'bar' || tipo === 'line') ? {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: esMonetario ?
+                                    function (value) { return formatCurrency(value); } :
+                                    function (value) { return value; }
+                            },
+                            title: {
+                                display: true,
+                                text: esMonetario ? 'Valor (COP)' : 'Cantidad'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: tipo === 'line' ? 'Años' : 'Categorías'
+                            }
+                        }
+                    } : undefined
+                }
+            });
+        }
+
+        // actualizarGraficos(proyectosFiltrados);
+        // Función para obtener opciones según el tipo de gráfico
+        function getChartOptions(tipo) {
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: tipo === 'pie' || tipo === 'doughnut' ? 'right' : 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                if (tipo === 'pie' || tipo === 'doughnut') {
+                                    return `${context.label}: ${formatCurrency(context.raw)}`;
+                                }
+                                return `${context.dataset.label}: ${formatCurrency(context.raw)}`;
+                            }
+                        }
+                    }
+                }
+            };
+
+            if (tipo === 'bar' || tipo === 'line') {
+                commonOptions.scales = {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function (value) {
+                                return formatCurrency(value);
+                            }
+                        }
+                    }
+                };
+            }
+
+            return commonOptions;
+        }
+
+
+        // Función para actualizar gráficos
+        // Función actualizada para actualizar gráficos
+        function actualizarGraficos(proyectosFiltrados) {
+            // Obtener configuraciones seleccionadas
+            const config = {
+                entidades: {
+                    tipo: document.getElementById('tipoGraficoEntidades').value,
+                    metrica: document.getElementById('metricaEntidades').value
+                },
+                anual: {
+                    tipo: document.getElementById('tipoGraficoAnual').value,
+                    metrica: document.getElementById('metricaAnual').value
+                }
+            };
+
+            // Procesar datos según métricas seleccionadas
+            const datosEntidades = procesarMetricas(proyectosFiltrados, config.entidades.metrica, 'entidad');
+            const datosAnuales = procesarMetricas(proyectosFiltrados, config.anual.metrica, 'anio');
+
+            // Destruir gráficos existentes
+            if (graficoEntidades) graficoEntidades.destroy();
+            if (graficoAnual) graficoAnual.destroy();
+
+            // Crear nuevos gráficos
+            const ctxEntidades = document.getElementById('graficoEntidades');
+            if (Object.keys(datosEntidades).length > 0) {
+                const labels = Object.keys(datosEntidades).sort((a, b) => datosEntidades[b] - datosEntidades[a]);
+                const titulo = getTituloMetrica(config.entidades.metrica);
+
+                graficoEntidades = crearGrafico(
+                    ctxEntidades,
+                    config.entidades.tipo,
+                    labels,
+                    labels.map(label => datosEntidades[label]),
+                    titulo,
+                    config.entidades.metrica
+                );
+            }
+
+            const ctxAnual = document.getElementById('graficoAnual');
+            if (Object.keys(datosAnuales).length > 0) {
+                const labels = Object.keys(datosAnuales).sort();
+                const titulo = getTituloMetrica(config.anual.metrica);
+
+                graficoAnual = crearGrafico(
+                    ctxAnual,
+                    config.anual.tipo,
+                    labels,
+                    labels.map(label => datosAnuales[label]),
+                    titulo,
+                    config.anual.metrica
+                );
+            }
+        }
+
+        function getTituloMetrica(metrica) {
+            const titulos = {
+                'cantidad': 'Cantidad de contratos',
+                'estados': 'Distribución por estados',
+                'valor': 'Valor total',
+                'beneficio': 'Beneficio total',
+                'contratos': 'Cantidad de contratos'
+            };
+            return titulos[metrica] || 'Datos';
+        }
+
+        function generarColores(cantidad) {
+            const baseColors = [
+                'rgba(94, 169, 167, 0.7)', // teal
+                'rgba(35, 50, 45, 0.7)',   // dark
+                'rgba(214, 183, 112, 0.7)', // gold
+                'rgba(94, 169, 167, 0.5)',
+                'rgba(35, 50, 45, 0.5)',
+                'rgba(214, 183, 112, 0.5)'
+            ];
+
+            const background = [];
+            const border = [];
+
+            for (let i = 0; i < cantidad; i++) {
+                const color = baseColors[i % baseColors.length];
+                background.push(color);
+                border.push(color.replace('0.7', '1').replace('0.5', '1'));
+            }
+
+            return { background, border };
+        }
+
+        // Event listeners
+        document.getElementById('aplicarFiltros').addEventListener('click', aplicarFiltros);
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', () => {
+            // Inicializar filtros
+            inicializarFiltros(["filtroAnio", "filtroEntidad", "filtroEstado", "filtroRiesgo"], [años, entidades, estadosUnicos,riesgosUnicos]);
+            // Mostrar todos los datos inicialmente
+            aplicarFiltros();
+        });
+
+
+        // Event listeners para los selectores
+        document.getElementById('tipoGraficoEntidades').addEventListener('change', function () {
+            aplicarFiltros(); // Vuelve a aplicar los filtros con el nuevo tipo de gráfico
+        });
+
+        // document.getElementById('tipoGraficoAnual').addEventListener('change', function () {
+        //     aplicarFiltros(); // Vuelve a aplicar los filtros con el nuevo tipo de gráfico
+        // });
+
+        document.getElementById('tipoGraficoAnual').addEventListener('change',aplicarFiltros); // Vuelve a aplicar los filtros con el nuevo tipo de gráfico
+
+
+
+        // Agregar event listeners para los nuevos selectores
+        document.getElementById('metricaEntidades').addEventListener('change', aplicarFiltros);
+        document.getElementById('metricaAnual').addEventListener('change', aplicarFiltros);
+
+    </script>
+</body>
+
+</html>

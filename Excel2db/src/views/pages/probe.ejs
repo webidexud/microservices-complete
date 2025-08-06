@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- <link href="/public/output.css" rel="stylesheet"> -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <title>Document</title>
+</head>
+<body class="bg-radial-[at_90%_5%] from-[#037F52] to-[#00060D] to-80% 
+flex items-center justify-center min-h-screen">
+
+    <div class="flex flex-col justify-center items-center bg-gray-500/40 shadow-lg rounded-lg p-8">
+        <h1 class="text-white text-4xl mb-4 font-bold">Cargar Archivo</h1>
+        <form action="/Excel" method="post" enctype="multipart/form-data" class="flex flex-col gap-4 justify-center items-center">
+            <input type="file" name="file" accept=".xlsx" class="bg-gray-500 p-2 rounded text-white shadow-lg" required>
+            <button type="submit" class="bg-[#C5F57D] p-2 rounded w-[50%] text-black">Subir archivo</button>
+        </form>
+    </div>
+</body>
+</html>

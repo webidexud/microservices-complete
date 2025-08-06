@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <!-- <link href="/public/output.css" rel="stylesheet"> -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="/public/scripts/graficas.js"></script>
+    <script src="/public/scripts/utils.js"></script>
+    <script src="/public/scripts/handles.js"></script>
+
+
+</head>
+<body class="font-sans bg-gray-100 flex">
+
+<!-- Sidebar -->
+<div class="bg-radial-[at_90%_5%] from-[#037F52] to-[#00060D] to-80% w-64 min-h-screen p-5 text-white">
+    <h2 class="text-3xl font-bold mb-6">Dashboard</h2>
+    <nav>
+        <ul>
+            <li><a href="/GreatPage" class="block py-2 px-4 mb-3 rounded-md hover:bg-gray-600">Regresar</a></li>
+        </ul>
+    </nav>
+
+</div>
+
+<!-- Main Content -->
+<div class="main-content flex-1 p-8 bg-gray-200">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        <!-- Gráfico: Contratos por Año -->
+        <div class="col-span-2 bg-gray-900 text-white p-6 rounded-lg shadow-lg">
+            <h3 class="text-xl font-semibold mb-4">Contratos por Año</h3>
+            <select id="selecYearBar" class="text-black bg-white">
+                <option value="anio">Todos</option>
+                <option value="anio">2025</option>
+                <option value="anio">2024</option>
+                <option value="anio">2023</option>
+                <option value="anio">2022</option>
+                <option value="anio">2021</option>
+            </select>
+
+            <canvas id="graficoAniosBar"></canvas>
+        </div>
+
+         <!-- Gráfico: Contratos por Año -->
+        <div class="col-span-1 bg-gray-900 text-white p-6 rounded-lg shadow-lg">
+            <h3 class="text-xl font-semibold mb-4">Contratos por Año</h3>
+            <select id="selecYearPie" class="text-black bg-white">
+                <option value="anio">Todos</option>
+                <option value="anio">2025</option>
+                <option value="anio">2024</option>
+                <option value="anio">2023</option>
+                <option value="anio">2022</option>
+                <option value="anio">2021</option>
+            </select>
+            <canvas id="graficoAniosPie"></canvas>
+        </div>
+
+        <!-- Gráfico: Estado de Proyectos -->
+        <div class="col-span-1 bg-gray-900 text-white p-6 rounded-lg shadow-lg">
+            <h3 class="text-xl font-semibold mb-4">Proyectos por Estado</h3>
+            <select id="selecEstado" class="text-black bg-white"></select>
+            <canvas id="graficoEstados"></canvas>
+        </div>
+        <div class="col-span-2 bg-gray-900 text-white p-6 rounded-lg shadow-lg">
+            <h3 class="text-xl font-semibold mb-4">Modalidad</h3>
+            <select id="selecModalidad" class="text-black bg-white"></select>
+            <canvas id="graficoModalidad"></canvas>
+        </div>
+
+
+        <div class="col-span-2 bg-gray-900 text-white p-6 rounded-lg shadow-lg">
+            <h3 class="text-xl font-semibold mb-4">Riesgo</h3>
+            <select id="selecRiesgo" class="text-black bg-white"></select>
+            <canvas id="graficoRiesgo"></canvas>
+        </div>
+
+        <div class="col-span-1 bg-gray-900 text-white p-6 rounded-lg shadow-lg">
+            <h3 class="text-xl font-semibold mb-4">numero de proyecto por abogado</h3>
+            <select id="selecAbogado" class="text-black bg-white"></select>
+            <canvas id="graficoAbogados"></canvas>
+        </div>
+
+
+        
+         <!-- Gráfico: Numero de entidades -->
+        <div class="col-span-3 bg-gray-900 text-white p-6 rounded-lg shadow-lg">
+            <h3 class="text-xl font-semibold mb-4">Entidades</h3>
+            <select id="selecEntidades" class="text-black bg-white"></select>
+            <canvas id="graficoCantEntidades"></canvas>
+        </div>
+
+        
+
+
+
+      
+        
+
+    </div>
+</div>
+
+<script>
+
+    const datos = <%- JSON.stringify(data) %>;
+    const conteo_year = Conteofrecuencias(datos,"anio");
+    renderCharts("graficoAniosBar",Object.keys(conteo_year).sort(),Object.values(conteo_year).sort(), 'Proyectos por Año', 'bar');
+    renderCharts("graficoAniosPie",Object.keys(conteo_year).sort(),Object.values(conteo_year).sort(), 'Proyectos por Año', 'pie');
+
+    const conteo_estados = Conteofrecuencias(datos,"estado");
+    renderCharts("graficoEstados",Object.keys(conteo_estados).sort(),Object.values(conteo_estados).sort(),"Proyectos por Estado", 'pie');
+
+    const conteo_modalidad = Conteofrecuencias(datos,"modalidad");
+    renderCharts("graficoModalidad",Object.keys(conteo_modalidad).sort(),Object.values(conteo_modalidad).sort(),"Proyectos por Modalidad", 'bar');
+
+    const conteo_riesgo = Conteofrecuencias(datos,"relevancia");
+    renderCharts("graficoRiesgo",Object.keys(conteo_riesgo).sort(),Object.values(conteo_riesgo).sort(),"Proyectos por Riesgo", 'bar');
+
+    const conteo_abogados = Conteofrecuencias(datos,"abogado");
+    renderCharts("graficoAbogados",Object.keys(conteo_abogados).sort(),Object.values(conteo_abogados).sort(),"Proyectos por Abogado", 'pie');
+
+    const conteo_entidades = Conteofrecuencias(datos,"entidad");
+    renderCharts("graficoCantEntidades",Object.keys(conteo_entidades).sort(),Object.values(conteo_entidades).sort(),"Proyectos por Entidad", 'bar');
+
+
+    CrarSelect("selecEstado",datos,"estado");
+    CrarSelect("selecModalidad",datos,"modalidad");
+    CrarSelect("selecRiesgo",datos,"relevancia");
+    CrarSelect("selecAbogado",datos,"abogado");
+    CrarSelect("selecEntidades",datos,"entidad");
+
+    enableEventhazndlers("selecYearBar",datos,"graficoAniosBar");
+    enableEventhazndlers("selecYearPie",datos,"graficoAniosPie");
+    enableEventhazndlers("selecEstado",datos,"graficoEstados");
+    enableEventhazndlers("selecModalidad",datos,"graficoModalidad");
+    enableEventhazndlers("selecRiesgo",datos,"graficoRiesgo");
+    enableEventhazndlers("selecAbogado",datos,"graficoAbogados");
+    enableEventhazndlers("selecEntidades",datos,"graficoCantEntidades");
+    
+
+</script>
+
+</body>
+</html>

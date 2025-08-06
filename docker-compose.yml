@@ -1,0 +1,81 @@
+services:
+  si_nginx:
+    container_name: si_nginx
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ${path_host_vol_nginx}:${path_cont_vol_nginx}
+    networks:
+      - auth_network
+  si_ofex:
+    container_name: si_ofex
+    build:
+      context: ./si_ofex
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - DB_HOST=${DB_HOST}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_PORT=${DB_PORT}
+      - PORT=3000
+    volumes:
+      - ${path_host_vol_si_ofex}:${path_cont_vol_si_ofex}
+    networks:
+      - auth_network
+
+  si_db_general:
+    container_name: si_db_general
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_HOST=${DB_HOST}
+      - POSTGRES_PORT=${DB_PORT}
+    volumes:
+      # - ${path_host_vol_db}:${path_cont_vol_db}
+      - ./si_db_general/data:/var/lib/postgresql/data
+      - ./si_db_general/init-db:/docker-entrypoint-initdb.d
+    networks:
+      - auth_network
+
+  adminer:
+    container_name: adminer
+    image: adminer:latest
+    restart: always
+    ports:
+      - 5001:8080
+    networks:
+      - auth_network
+
+  bot_excel:
+    container_name: "bot_excel"
+    build:
+      context: ./Excel2db
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT_BOT}:61800"
+    environment:
+      - SHARED_LINK=${SHARED_LINK}
+      - SHEET_NAME=${SHEET_NAME}
+      - DIR_AND_NAME_XLSX=${DIR_AND_NAME_XLSX}
+      - PORT=${PORT_BOT}
+      - BOKEH_ALLOW_WS_ORIGIN=${BOKEH_ALLOW_WS_ORIGIN}
+    volumes:
+      # - ./Excel2db/main.py:/app/main.py
+      - ./Excel2db/src:/app/src
+    networks:
+      - auth_network
+
+
+networks:
+  auth_network:
+    driver: bridge

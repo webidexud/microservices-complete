@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title><%= title %></title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1><%= title %></h1>
+
+    <canvas id="myChart" width="400" height="200"></canvas>
+
+    <script>
+        // Datos recibidos desde el backend (suponiendo que la primera fila tiene encabezados)
+        const rawData = <%- JSON.stringify(data) %>;
+
+        // Tomar encabezados de la primera fila
+        const headers = rawData[0];
+
+        // Supongamos que queremos graficar la columna 1 (x) vs columna 2 (y)
+        const labels = rawData.slice(1).map(row => row[0]); // Primera columna (x)
+        const values = rawData.slice(1).map(row => row[1]); // Segunda columna (y)
+
+        const ctx = document.getElementById('myChart').getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'bar', // Cambia a 'line', 'pie', etc., si prefieres
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: headers[1], // Nombre de la segunda columna como etiqueta
+                    data: values,
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

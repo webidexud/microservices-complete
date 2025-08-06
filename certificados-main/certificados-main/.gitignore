@@ -1,0 +1,46 @@
+# Archivos de entorno
+.env
+.env.local
+.env.production
+
+# Logs
+logs/
+*.log
+
+# Backups
+backups/
+*.sql
+
+# Archivos temporales
+uploads/
+generated/
+templates/
+*.tmp
+
+# Docker volumes
+docker-data/
+
+# SSL certificates
+docker/ssl/*.pem
+docker/ssl/*.key
+docker/ssl/*.crt
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PHP
+vendor/
+composer.lock
+
+# Archivos de certificados de prueba
+certificado*.svg
+test*.csv
+manual.docx
+Necesidad.docx
