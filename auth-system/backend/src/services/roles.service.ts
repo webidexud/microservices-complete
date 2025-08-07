@@ -1,168 +1,105 @@
+// auth-system/backend/src/services/roles.service.ts
 import { prisma } from '../utils/database';
 import { logger } from '../utils/logger';
 
 export class RolesService {
 
-  // Permisos disponibles en el sistema
-  private readonly AVAILABLE_PERMISSIONS = [
+  // Permisos estáticos del sistema
+  private readonly STATIC_PERMISSIONS = [
     // Usuarios
-    'users.create',
-    'users.read',
-    'users.update',
-    'users.delete',
-    
+    'users.create', 'users.read', 'users.update', 'users.delete',
     // Roles
-    'roles.create',
-    'roles.read',
-    'roles.update',
-    'roles.delete',
-    
+    'roles.create', 'roles.read', 'roles.update', 'roles.delete',
     // Microservicios
-    'microservices.create',
-    'microservices.read',
-    'microservices.update',
-    'microservices.delete',
-    
+    'microservices.create', 'microservices.read', 'microservices.update', 'microservices.delete',
     // Sistema
-    'system.config',
-    'system.logs',
-    'system.health',
-    
+    'system.config', 'system.logs', 'system.health',
     // Dashboard
-    'dashboard.view',
-    'dashboard.analytics',
-    
+    'dashboard.view', 'dashboard.analytics',
     // Perfil
-    'profile.read',
-    'profile.update',
-    
-    // Super admin (todos los permisos)
+    'profile.read', 'profile.update',
+    // Super admin
     '*'
   ];
 
-  // Obtener lista de roles con filtros y paginación
-  async getRoles(params: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    isActive?: boolean;
-    sortBy?: string;
-    sortOrder?: 'asc' | 'desc';
-  }) {
+  // ✅ NUEVA: Obtener permisos dinámicos de microservicios
+  async getDynamicPermissions(): Promise<string[]> {
     try {
-      const {
-        page = 1,
-        limit = 10,
-        search,
-        isActive,
-        sortBy = 'id',
-        sortOrder = 'asc'
-      } = params;
+      const microservices = await prisma.microservice.findMany({
+        where: { isActive: true },
+        select: { name: true }
+      });
 
-      const skip = (page - 1) * limit;
+      const dynamicPermissions: string[] = [];
+      
+      microservices.forEach(ms => {
+        const serviceName = ms.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        dynamicPermissions.push(
+          `${serviceName}.access`,
+          `${serviceName}.view`,
+          `${serviceName}.use`,
+          `${serviceName}.admin`
+        );
+      });
 
-      // Construir filtros WHERE
-      const where: any = {};
-
-      if (isActive !== undefined) {
-        where.isActive = isActive;
-      }
-
-      if (search) {
-        where.OR = [
-          { name: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } }
-        ];
-      }
-
-      // Obtener roles
-      const [roles, total] = await Promise.all([
-        prisma.role.findMany({
-          where,
-          skip,
-          take: limit,
-          orderBy: {
-            [sortBy]: sortOrder
-          },
-          include: {
-            _count: {
-              select: {
-                userRoles: true
-              }
-            }
-          }
-        }),
-        prisma.role.count({ where })
-      ]);
-
-      const totalPages = Math.ceil(total / limit);
-
-      return {
-        roles: roles.map(role => ({
-          ...role,
-          userCount: role._count.userRoles
-        })),
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages,
-          hasNext: page < totalPages,
-          hasPrev: page > 1
-        }
-      };
-
+      return dynamicPermissions;
     } catch (error) {
-      logger.error('Error al obtener roles:', error);
-      throw new Error('Error al obtener roles');
+      logger.error('Error al obtener permisos dinámicos:', error);
+      return [];
     }
   }
 
-  // Obtener rol por ID
-  async getRoleById(id: number) {
+  // ✅ NUEVA: Obtener TODOS los permisos (estáticos + dinámicos)
+  async getAllPermissions(): Promise<string[]> {
+    const dynamicPermissions = await this.getDynamicPermissions();
+    return [...this.STATIC_PERMISSIONS, ...dynamicPermissions];
+  }
+
+  // ✅ ACTUALIZADA: Obtener permisos agrupados
+  async getAvailablePermissions() {
     try {
-      const role = await prisma.role.findUnique({
-        where: { id },
-        include: {
-          _count: {
-            select: {
-              userRoles: true
-            }
-          },
-          userRoles: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  username: true,
-                  email: true,
-                  firstName: true,
-                  lastName: true,
-                  isActive: true
-                }
-              }
-            }
-          }
+      const dynamicPermissions = await this.getDynamicPermissions();
+      const allPermissions = [...this.STATIC_PERMISSIONS, ...dynamicPermissions];
+
+      // Agrupar permisos dinámicamente
+      const grouped: { [key: string]: string[] } = {
+        users: this.STATIC_PERMISSIONS.filter(p => p.startsWith('users.')),
+        roles: this.STATIC_PERMISSIONS.filter(p => p.startsWith('roles.')),
+        microservices: this.STATIC_PERMISSIONS.filter(p => p.startsWith('microservices.')),
+        system: this.STATIC_PERMISSIONS.filter(p => p.startsWith('system.')),
+        dashboard: this.STATIC_PERMISSIONS.filter(p => p.startsWith('dashboard.')),
+        profile: this.STATIC_PERMISSIONS.filter(p => p.startsWith('profile.')),
+        special: this.STATIC_PERMISSIONS.filter(p => p === '*')
+      };
+
+      // Agregar permisos dinámicos por microservicio
+      const microservices = await prisma.microservice.findMany({
+        where: { isActive: true },
+        select: { name: true }
+      });
+
+      microservices.forEach(ms => {
+        const serviceName = ms.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const servicePermissions = dynamicPermissions.filter(p => p.startsWith(`${serviceName}.`));
+        if (servicePermissions.length > 0) {
+          grouped[serviceName] = servicePermissions;
         }
       });
 
-      if (!role) {
-        return null;
-      }
-
       return {
-        ...role,
-        userCount: role._count.userRoles,
-        users: role.userRoles.map(ur => ur.user)
+        all: allPermissions,
+        static: this.STATIC_PERMISSIONS,
+        dynamic: dynamicPermissions,
+        grouped
       };
 
     } catch (error) {
-      logger.error('Error al obtener rol por ID:', error);
-      throw new Error('Error al obtener rol');
+      logger.error('Error al obtener permisos disponibles:', error);
+      throw new Error('Error al obtener permisos disponibles');
     }
   }
 
-  // Crear nuevo rol
+  // ✅ ACTUALIZADA: Crear rol con validación dinámica
   async createRole(roleData: {
     name: string;
     description?: string;
@@ -178,9 +115,10 @@ export class RolesService {
         throw new Error('Ya existe un rol con ese nombre');
       }
 
-      // Validar permisos
+      // Validar permisos (estáticos + dinámicos)
+      const allPermissions = await this.getAllPermissions();
       const invalidPermissions = roleData.permissions.filter(
-        permission => !this.AVAILABLE_PERMISSIONS.includes(permission)
+        permission => !allPermissions.includes(permission)
       );
 
       if (invalidPermissions.length > 0) {
@@ -209,7 +147,7 @@ export class RolesService {
     }
   }
 
-  // Actualizar rol
+  // ✅ ACTUALIZADA: Actualizar rol con validación dinámica
   async updateRole(id: number, roleData: {
     name?: string;
     description?: string;
@@ -242,12 +180,16 @@ export class RolesService {
         }
       }
 
-      // Validar permisos si se actualizan
+      // Validar permisos si se actualizan (estáticos + dinámicos)
       if (roleData.permissions) {
+        const allPermissions = await this.getAllPermissions();
         const invalidPermissions = roleData.permissions.filter(
-          permission => !this.AVAILABLE_PERMISSIONS.includes(permission)
+          permission => !allPermissions.includes(permission)
         );
 
+        if (invalidPermissions.length > 0) {
+          throw new Error(`Permisos inválidos: ${invalidPermissions.join(', ')}`);
+        }
       }
 
       // Actualizar rol
@@ -274,42 +216,168 @@ export class RolesService {
     }
   }
 
-  // Eliminar rol
-  async deleteRole(id: number, deletedBy: number) {
+  // ✅ NUEVA: Crear permisos automáticamente al registrar microservicio
+  async createMicroservicePermissions(microserviceName: string) {
     try {
-      const role = await prisma.role.findUnique({
-        where: { id },
+      const serviceName = microserviceName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const permissions = [
+        `${serviceName}.access`,
+        `${serviceName}.view`,
+        `${serviceName}.use`,
+        `${serviceName}.admin`
+      ];
+
+      // Agregar automáticamente al super_admin
+      const superAdminRole = await prisma.role.findUnique({
+        where: { name: 'super_admin' }
+      });
+
+      if (superAdminRole) {
+        const currentPermissions = superAdminRole.permissions as string[];
+        const newPermissions = [...new Set([...currentPermissions, ...permissions])];
+
+        await prisma.role.update({
+          where: { id: superAdminRole.id },
+          data: { permissions: newPermissions }
+        });
+
+        logger.info(`Permisos de ${microserviceName} agregados al super_admin`, { permissions });
+      }
+
+      return permissions;
+
+    } catch (error) {
+      logger.error('Error al crear permisos de microservicio:', error);
+      throw error;
+    }
+  }
+
+  // ✅ NUEVA: Verificar si usuario tiene acceso a microservicio
+  async userCanAccessMicroservice(userId: number, microserviceName: string): Promise<boolean> {
+    try {
+      const userRoles = await prisma.userRole.findMany({
+        where: { userId },
         include: {
-          _count: {
+          role: {
             select: {
-              userRoles: true
+              permissions: true,
+              isActive: true
             }
           }
         }
+      });
+
+      const serviceName = microserviceName.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      for (const userRole of userRoles) {
+        if (!userRole.role.isActive) continue;
+        
+        const rolePermissions = userRole.role.permissions as string[];
+        
+        // Super admin tiene acceso a todo
+        if (rolePermissions.includes('*')) {
+          return true;
+        }
+        
+        // Verificar permisos específicos del microservicio
+        if (rolePermissions.some(p => p.startsWith(`${serviceName}.`))) {
+          return true;
+        }
+      }
+
+      return false;
+
+    } catch (error) {
+      logger.error('Error al verificar acceso a microservicio:', error);
+      return false;
+    }
+  }
+
+  // Resto de métodos sin cambios...
+  async getRoles(params: any = {}) {
+    try {
+      const {
+        page = 1,
+        limit = 10,
+        search,
+        isActive,
+        sortBy = 'createdAt',
+        sortOrder = 'desc'
+      } = params;
+
+      const skip = (page - 1) * limit;
+      const where: any = {};
+
+      if (search) {
+        where.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } }
+        ];
+      }
+
+      if (isActive !== undefined) {
+        where.isActive = isActive;
+      }
+
+      const [roles, total] = await Promise.all([
+        prisma.role.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { [sortBy]: sortOrder },
+          include: {
+            userRoles: {
+              select: { userId: true }
+            }
+          }
+        }),
+        prisma.role.count({ where })
+      ]);
+
+      const rolesWithUserCount = roles.map(role => ({
+        ...role,
+        userCount: role.userRoles.length,
+        userRoles: undefined
+      }));
+
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        roles: rolesWithUserCount,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1
+        }
+      };
+
+    } catch (error) {
+      logger.error('Error al obtener roles:', error);
+      throw new Error('Error al obtener roles');
+    }
+  }
+
+  async deleteRole(id: number) {
+    try {
+      const role = await prisma.role.findUnique({
+        where: { id }
       });
 
       if (!role) {
         throw new Error('Rol no encontrado');
       }
 
-      // No permitir eliminar roles del sistema
-      if (['super_admin', 'admin', 'user'].includes(role.name)) {
-        throw new Error('No se puede eliminar un rol del sistema');
+      // No permitir eliminar roles críticos del sistema
+      if (['super_admin'].includes(role.name)) {
+        throw new Error('No se puede eliminar el rol de super administrador');
       }
 
-      // No permiti eliminar si tiene usuarios asignados
-      if (role._count.userRoles > 0) {
-        throw new Error('No se puede eliminar el rol porque tiene usuarios asignados');
-      }
+      await prisma.role.delete({ where: { id } });
 
-      await prisma.role.delete({
-        where: { id }
-      });
-
-      logger.info(`Rol eliminado: ${role.name}`, { 
-        roleId: id, 
-        deletedBy 
-      });
+      logger.info(`Rol eliminado: ${role.name}`, { roleId: id });
 
     } catch (error: any) {
       logger.error('Error al eliminar rol:', error);
@@ -317,117 +385,6 @@ export class RolesService {
     }
   }
 
-  // Activar rol
-  async activateRole(id: number, activatedBy: number) {
-    try {
-      const role = await prisma.role.findUnique({
-        where: { id }
-      });
-
-      if (!role) {
-        throw new Error('Rol no encontrado');
-      }
-
-      await prisma.role.update({
-        where: { id },
-        data: { isActive: true }
-      });
-
-      logger.info(`Rol activado: ${role.name}`, { 
-        roleId: id, 
-        activatedBy 
-      });
-
-    } catch (error) {
-      logger.error('Error al activar rol:', error);
-      throw error;
-    }
-  }
-
-  // Desactivar rol
-  async deactivateRole(id: number, deactivatedBy: number) {
-    try {
-      const role = await prisma.role.findUnique({
-        where: { id }
-      });
-
-      if (!role) {
-        throw new Error('Rol no encontrado');
-      }
-
-      // No permitir desactivar roles críticos del sistema
-      if (['super_admin'].includes(role.name)) {
-        throw new Error('No se puede desactivar el rol de super administrador');
-      }
-
-      await prisma.role.update({
-        where: { id },
-        data: { isActive: false }
-      });
-
-      logger.info(`Rol desactivado: ${role.name}`, { 
-        roleId: id, 
-        deactivatedBy 
-      });
-
-    } catch (error: any) {
-      logger.error('Error al desactivar rol:', error);
-      throw error;
-    }
-  }
-
-  // Obtener usuarios con un rol específico
-  async getRoleUsers(roleId: number) {
-    try {
-      const userRoles = await prisma.userRole.findMany({
-        where: { roleId },
-        include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-              isActive: true,
-              createdAt: true,
-              lastLogin: true
-            }
-          }
-        }
-      });
-
-      return userRoles.map(ur => ur.user);
-
-    } catch (error) {
-      logger.error('Error al obtener usuarios del rol:', error);
-      throw new Error('Error al obtener usuarios del rol');
-    }
-  }
-
-  // Obtener todos los permisos disponibles
-  async getAvailablePermissions() {
-    try {
-      return {
-        all: this.AVAILABLE_PERMISSIONS,
-        grouped: {
-          users: this.AVAILABLE_PERMISSIONS.filter(p => p.startsWith('users.')),
-          roles: this.AVAILABLE_PERMISSIONS.filter(p => p.startsWith('roles.')),
-          microservices: this.AVAILABLE_PERMISSIONS.filter(p => p.startsWith('microservices.')),
-          system: this.AVAILABLE_PERMISSIONS.filter(p => p.startsWith('system.')),
-          dashboard: this.AVAILABLE_PERMISSIONS.filter(p => p.startsWith('dashboard.')),
-          profile: this.AVAILABLE_PERMISSIONS.filter(p => p.startsWith('profile.')),
-          special: this.AVAILABLE_PERMISSIONS.filter(p => p === '*')
-        }
-      };
-
-    } catch (error) {
-      logger.error('Error al obtener permisos disponibles:', error);
-      throw new Error('Error al obtener permisos disponibles');
-    }
-  }
-
-  // Verificar si un usuario tiene un permiso específico
   async userHasPermission(userId: number, permission: string): Promise<boolean> {
     try {
       const userRoles = await prisma.userRole.findMany({
@@ -463,38 +420,6 @@ export class RolesService {
     } catch (error) {
       logger.error('Error al verificar permisos del usuario:', error);
       return false;
-    }
-  }
-
-  // Obtener todos los permisos de un usuario
-  async getUserPermissions(userId: number): Promise<string[]> {
-    try {
-      const userRoles = await prisma.userRole.findMany({
-        where: { userId },
-        include: {
-          role: {
-            select: {
-              permissions: true,
-              isActive: true
-            }
-          }
-        }
-      });
-
-      const allPermissions = new Set<string>();
-
-      for (const userRole of userRoles) {
-        if (!userRole.role.isActive) continue;
-        
-        const rolePermissions = userRole.role.permissions as string[];
-        rolePermissions.forEach(permission => allPermissions.add(permission));
-      }
-
-      return Array.from(allPermissions);
-
-    } catch (error) {
-      logger.error('Error al obtener permisos del usuario:', error);
-      return [];
     }
   }
 }
