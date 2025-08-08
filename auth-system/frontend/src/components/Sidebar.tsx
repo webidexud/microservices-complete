@@ -64,42 +64,79 @@ const Sidebar = () => {
     loadUserMicroservices()
   }, [user])
 
-  const loadUserMicroservices = async () => {
-    try {
-      setLoading(true)
-      
-      // Obtener todos los microservicios activos
-      const response = await api.get('/microservices?isActive=true')
-      const allMicroservices = response.data.microservices || []
-      
-      // Filtrar solo los que el usuario puede acceder
-      const accessibleMicroservices = allMicroservices.filter((ms: Microservice) => 
-        userCanAccessMicroservice(ms.name)
-      )
-      
-      setMicroservices(accessibleMicroservices)
-    } catch (error) {
-      console.error('Error loading microservices:', error)
-      setMicroservices([])
-    } finally {
-      setLoading(false)
-    }
+const loadUserMicroservices = async () => {
+  try {
+    setLoading(true)
+    
+    // ✅ DEBUG: Verificar datos del usuario
+    console.log('🔍 Sidebar - Usuario actual:', user)
+    console.log('🔍 Sidebar - Permisos del usuario:', user?.permissions)
+    
+    // Obtener todos los microservicios activos
+    const response = await api.get('/microservices?isActive=true')
+    const allMicroservices = response.data.microservices || []
+    
+    console.log('🔍 Sidebar - Microservicios obtenidos:', allMicroservices)
+    
+    // Filtrar solo los que el usuario puede acceder
+    const accessibleMicroservices = allMicroservices.filter((ms: Microservice) => {
+      const hasAccess = userCanAccessMicroservice(ms.name)
+      console.log(`🔍 Sidebar - ${ms.name}: ${hasAccess ? '✅ ACCESO' : '❌ SIN ACCESO'}`)
+      return hasAccess
+    })
+    
+    console.log('🔍 Sidebar - Microservicios accesibles:', accessibleMicroservices)
+    setMicroservices(accessibleMicroservices)
+    
+  } catch (error) {
+    console.error('❌ Error loading microservices:', error)
+    setMicroservices([])
+  } finally {
+    setLoading(false)
   }
+}
 
   // Verificar si el usuario tiene permisos para un microservicio
-  const userCanAccessMicroservice = (microserviceName: string): boolean => {
-    if (!user?.permissions) return false
-    
-    // Super admin tiene acceso a todo
-    if (user.permissions.includes('*')) return true
-    
-    const serviceName = microserviceName.toLowerCase().replace(/[^a-z0-9]/g, '')
-    
-    // Verificar si tiene algún permiso del microservicio
-    return user.permissions.some(permission => 
-      permission.startsWith(`${serviceName}.`)
-    )
+const userCanAccessMicroservice = (microserviceName: string): boolean => {
+  if (!user?.permissions) {
+    console.log(`🔍 No hay permisos para usuario`)
+    return false
   }
+  
+  // Super admin tiene acceso a todo
+  if (user.permissions.includes('*')) {
+    console.log(`🔍 ${microserviceName}: Super admin - acceso total`)
+    return true
+  }
+  
+  // ✅ MEJORAR: Normalización del nombre más robusta
+  const serviceName = microserviceName.toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .trim()
+  
+  console.log(`🔍 ${microserviceName} normalizado a: ${serviceName}`)
+  
+  // ✅ MEJORAR: Verificar permisos específicos más detalladamente
+  const requiredPermissions = [
+    `${serviceName}.access`,
+    `${serviceName}.view`,
+    `${serviceName}.use`
+  ]
+  
+  const userPermissions = user.permissions || []
+  console.log(`🔍 Permisos requeridos para ${serviceName}:`, requiredPermissions)
+  console.log(`🔍 Permisos del usuario:`, userPermissions)
+  
+  // Verificar si tiene algún permiso del microservicio
+  const hasAnyPermission = requiredPermissions.some(requiredPerm => {
+    const hasThis = userPermissions.includes(requiredPerm)
+    console.log(`🔍 ¿Tiene ${requiredPerm}? ${hasThis ? '✅' : '❌'}`)
+    return hasThis
+  })
+  
+  console.log(`🔍 Resultado final para ${microserviceName}: ${hasAnyPermission ? '✅ ACCESO' : '❌ SIN ACCESO'}`)
+  return hasAnyPermission
+}
 
   // Verificar si el usuario tiene un permiso específico
   const hasPermission = (permission?: string): boolean => {

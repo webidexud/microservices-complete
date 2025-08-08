@@ -125,6 +125,92 @@ export async function createApp(): Promise<FastifyInstance> {
     };
   });
 
+  app.get('/api/auth/validate-microservice/:microservice', async (request, reply) => {
+  try {
+    const { microservice } = request.params as { microservice: string };
+    const token = request.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      reply.code(401);
+      return { error: 'Token no proporcionado' };
+    }
+
+    const decoded = app.jwt.verify(token) as any;
+    const user = decoded.user;
+    const userPermissions = user.permissions || [];
+
+    // Verificar si el usuario tiene permisos para el microservicio específico
+    const serviceName = microservice.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    // Super admin tiene acceso a todo
+    if (userPermissions.includes('*')) {
+      reply.header('X-User-ID', user.id.toString());
+      reply.header('X-User-Username', user.username);
+      reply.header('X-User-Email', user.email);
+      reply.header('X-User-Permissions', JSON.stringify(userPermissions));
+      
+      return {
+        valid: true,
+        hasAccess: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          permissions: userPermissions
+        },
+        microservice: serviceName,
+        requiredPermissions: [`${serviceName}.access`]
+      };
+    }
+
+    // Verificar permisos específicos del microservicio
+    const requiredPermissions = [
+      `${serviceName}.access`,
+      `${serviceName}.view`,
+      `${serviceName}.use`
+    ];
+
+    const hasAccess = requiredPermissions.some(permission => 
+      userPermissions.includes(permission)
+    );
+
+    if (!hasAccess) {
+      reply.code(403);
+      return { 
+        error: 'Sin permisos para acceder a este microservicio',
+        microservice: serviceName,
+        required: requiredPermissions,
+        userPermissions: userPermissions
+      };
+    }
+
+    // Usuario tiene permisos - permitir acceso
+    reply.header('X-User-ID', user.id.toString());
+    reply.header('X-User-Username', user.username);
+    reply.header('X-User-Email', user.email);
+    reply.header('X-User-Permissions', JSON.stringify(userPermissions));
+    
+    return {
+      valid: true,
+      hasAccess: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        permissions: userPermissions
+      },
+      microservice: serviceName,
+      grantedPermissions: requiredPermissions.filter(perm => 
+        userPermissions.includes(perm)
+      )
+    };
+
+  } catch (error) {
+    reply.code(401);
+    return { error: 'Token inválido o expirado' };
+  }
+});
+
   // Manejo de errores global
   app.setErrorHandler(async (error, request, reply) => {
     console.error('Error en la aplicación:', error);

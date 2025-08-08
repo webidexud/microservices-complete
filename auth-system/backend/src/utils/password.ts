@@ -47,10 +47,10 @@ export function validatePasswordPolicy(password: string): {
     errors.push('La contraseña debe tener al menos un número');
   }
 
-  // Opcional: Al menos un carácter especial
-  // if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-  //   errors.push('La contraseña debe tener al menos un carácter especial');
-  // }
+  // ✅ NUEVO: Al menos un carácter especial
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    errors.push('La contraseña debe tener al menos un carácter especial (!@#$%^&*(),.?":{}|<>)');
+  }
 
   return {
     isValid: errors.length === 0,

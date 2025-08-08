@@ -16,7 +16,8 @@ const createUserSchema = z.object({
     .min(8, 'Password debe tener al menos 8 caracteres')
     .regex(/[A-Z]/, 'Password debe tener al menos una letra mayúscula')
     .regex(/[a-z]/, 'Password debe tener al menos una letra minúscula')
-    .regex(/\d/, 'Password debe tener al menos un número'),
+    .regex(/\d/, 'Password debe tener al menos un número')
+    .regex(/[!@#$%^&*(),.?":{}|<>]/, 'Password debe tener al menos un carácter especial (!@#$%^&*(),.?":{}|<>)'),
   firstName: z.string().min(1, 'Nombre es requerido'),
   lastName: z.string().min(1, 'Apellido es requerido'),
   cedula: z.string().optional(),
@@ -30,6 +31,7 @@ const updateUserSchema = createUserSchema.omit({ password: true }).extend({
     .regex(/[A-Z]/, 'Password debe tener al menos una letra mayúscula')
     .regex(/[a-z]/, 'Password debe tener al menos una letra minúscula')
     .regex(/\d/, 'Password debe tener al menos un número')
+    .regex(/[!@#$%^&*(),.?":{}|<>]/, 'Password debe tener al menos un carácter especial (!@#$%^&*(),.?":{}|<>)')
     .optional()
     .or(z.literal('')),
 })
@@ -75,15 +77,16 @@ const UserForm = ({ user, onClose, onSuccess }: UserFormProps) => {
   const selectedRoleIds = watch('roleIds')
 
   // Función para validar si la contraseña cumple todos los requisitos
-  const isPasswordValid = (password: string) => {
-    if (!password && isEditing) return true; // En edición, contraseña vacía es válida
-    if (!password && !isEditing) return false; // En creación, contraseña es requerida
-    
-    return password.length >= 8 &&
-           /[A-Z]/.test(password) &&
-           /[a-z]/.test(password) &&
-           /\d/.test(password);
-  }
+const isPasswordValid = (password: string) => {
+  if (!password && isEditing) return true; // En edición, contraseña vacía es válida
+  if (!password && !isEditing) return false; // En creación, contraseña es requerida
+  
+  return password.length >= 8 &&
+         /[A-Z]/.test(password) &&
+         /[a-z]/.test(password) &&
+         /\d/.test(password) &&
+         /[!@#$%^&*(),.?":{}|<>]/.test(password);
+}
 
   // Mutación para crear/actualizar usuario
   const mutation = useMutation({
@@ -293,6 +296,12 @@ const UserForm = ({ user, onClose, onSuccess }: UserFormProps) => {
                   }`}>
                     <span>{passwordValue && /\d/.test(passwordValue) ? '✓' : '✗'}</span>
                     <span>Al menos un número</span>
+                  </div>
+                  <div className={`flex items-center space-x-2 text-xs ${
+                    passwordValue && /[!@#$%^&*(),.?":{}|<>]/.test(passwordValue) ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    <span>{passwordValue && /[!@#$%^&*(),.?":{}|<>]/.test(passwordValue) ? '✓' : '✗'}</span>
+                    <span>Al menos un carácter especial (!@#$%^&*(),.?":{}|&lt;&gt;)</span>
                   </div>
                 </div>
               </div>

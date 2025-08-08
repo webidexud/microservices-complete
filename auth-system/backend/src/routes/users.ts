@@ -9,7 +9,12 @@ const usersService = new UsersService();
 const createUserSchema = z.object({
   username: z.string().min(3, 'Username debe tener al menos 3 caracteres').max(50),
   email: z.string().email('Email inválido').max(100),
-  password: z.string().min(8, 'Password debe tener al menos 8 caracteres'),
+  password: z.string()
+    .min(8, 'Password debe tener al menos 8 caracteres')
+    .regex(/[A-Z]/, 'Password debe tener al menos una letra mayúscula')
+    .regex(/[a-z]/, 'Password debe tener al menos una letra minúscula')
+    .regex(/\d/, 'Password debe tener al menos un número')
+    .regex(/[!@#$%^&*(),.?":{}|<>]/, 'Password debe tener al menos un carácter especial'),
   firstName: z.string().min(1, 'Nombre es requerido').max(100),
   lastName: z.string().min(1, 'Apellido es requerido').max(100),
   cedula: z.string().optional(),
@@ -30,7 +35,12 @@ const updateUserSchema = z.object({
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Contraseña actual es requerida'),
-  newPassword: z.string().min(8, 'Nueva contraseña debe tener al menos 8 caracteres')
+  newPassword: z.string()
+    .min(8, 'Nueva contraseña debe tener al menos 8 caracteres')
+    .regex(/[A-Z]/, 'Nueva contraseña debe tener al menos una letra mayúscula')
+    .regex(/[a-z]/, 'Nueva contraseña debe tener al menos una letra minúscula')
+    .regex(/\d/, 'Nueva contraseña debe tener al menos un número')
+    .regex(/[!@#$%^&*(),.?":{}|<>]/, 'Nueva contraseña debe tener al menos un carácter especial')
 });
 
 const querySchema = z.object({
