@@ -384,6 +384,75 @@ export class RolesService {
       throw error;
     }
   }
+async createMicroservicePermissions(microserviceName: string) {
+  try {
+    const serviceName = microserviceName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const permissions = [
+      `${serviceName}.access`,
+      `${serviceName}.view`,
+      `${serviceName}.use`,
+      `${serviceName}.admin`
+    ];
+
+    // ✅ IMPORTANTE: NO agregar permisos del dashboard principal automáticamente
+    // Solo agregar permisos específicos del microservicio
+
+    // Obtener el rol super_admin para agregarlo allí
+    const superAdminRole = await prisma.role.findUnique({
+      where: { name: 'super_admin' }
+    });
+
+    if (superAdminRole) {
+      const currentPermissions = superAdminRole.permissions as string[];
+      const newPermissions = [...new Set([...currentPermissions, ...permissions])];
+
+      await prisma.role.update({
+        where: { id: superAdminRole.id },
+        data: { permissions: newPermissions }
+      });
+
+      logger.info(`Permisos de ${microserviceName} agregados al super_admin`, { permissions });
+    }
+
+    return permissions;
+
+  } catch (error) {
+    logger.error('Error al crear permisos de microservicio:', error);
+    throw error;
+  }
+}
+
+// ✅ NUEVO: Método para crear rol específico de microservicio
+async createMicroserviceRole(microserviceName: string, createdBy: number) {
+  try {
+    const serviceName = microserviceName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const roleName = `${serviceName}_user`;
+    
+    // Permisos SOLO del microservicio (sin dashboard principal)
+    const microservicePermissions = [
+      `${serviceName}.access`,
+      `${serviceName}.view`,
+      `${serviceName}.use`
+    ];
+
+    const newRole = await this.createRole({
+      name: roleName,
+      description: `Usuario con acceso exclusivo al microservicio ${microserviceName}`,
+      permissions: microservicePermissions
+    }, createdBy);
+
+    logger.info(`Rol específico creado para ${microserviceName}:`, { 
+      roleName, 
+      permissions: microservicePermissions 
+    });
+
+    return newRole;
+
+  } catch (error) {
+    logger.error('Error al crear rol de microservicio:', error);
+    throw error;
+  }
+}
 
   async userHasPermission(userId: number, permission: string): Promise<boolean> {
     try {
